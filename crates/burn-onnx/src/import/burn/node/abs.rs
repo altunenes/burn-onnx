@@ -10,8 +10,6 @@ impl NodeCodegen for onnx_ir::node::abs::AbsNode {
     }
 
     fn forward(&self, scope: &mut ScopeAtPosition<'_>) -> TokenStream {
-        use onnx_ir::ir::ArgType;
-
         let input_arg = self.inputs.first().unwrap();
         let output = arg_to_ident(self.outputs.first().unwrap());
 

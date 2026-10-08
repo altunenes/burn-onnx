@@ -10,8 +10,6 @@ impl NodeCodegen for onnx_ir::node::neg::NegNode {
     }
 
     fn forward(&self, scope: &mut ScopeAtPosition<'_>) -> TokenStream {
-        use onnx_ir::ir::ArgType;
-
         let input_arg = self.inputs.first().unwrap();
         let output = arg_to_ident(self.outputs.first().unwrap());
 
@@ -20,7 +18,8 @@ impl NodeCodegen for onnx_ir::node::neg::NegNode {
         let neg_expr = match &input_arg.ty {
             ArgType::Tensor(_) | ArgType::ScalarTensor(_) => quote! { #input.neg() },
             ArgType::ScalarNative(_) => quote! { -#input },
-            _ => panic!("Neg only supports tensor or scalar inputs"),
+            // Shape values are `[i64; N]` on the host; saturate like the other shape arithmetic.
+            ArgType::Shape(_) => quote! { #input.map(i64::saturating_neg) },
         };
 
         quote! {
@@ -46,6 +45,21 @@ mod tests {
         assert_snapshot!(code, @r"
         pub fn forward(&self, input: Tensor<2>) -> Tensor<2> {
             let output = input.neg();
+            output
+        }
+        ");
+    }
+
+    #[test]
+    fn test_neg_forward_shape() {
+        let node = NegNodeBuilder::new("neg1")
+            .input_shape("input", 3)
+            .output_shape("output", 3)
+            .build();
+        let code = codegen_forward_default(&node);
+        assert_snapshot!(code, @r"
+        pub fn forward(&self, input: [i64; 3]) -> [i64; 3] {
+            let output = input.map(i64::saturating_neg);
             output
         }
         ");

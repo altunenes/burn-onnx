@@ -25,7 +25,8 @@ mod tests {
     #[test]
     fn abs_shape() {
         let device = Default::default();
-        let model: abs_shape::Model = abs_shape::Model::default();
+        let model =
+            abs_shape::Model::from_file(concat!(env!("OUT_DIR"), "/model/abs_shape.bpk"), &device);
 
         let input = Tensor::<3>::ones([2, 3, 4], &device);
         let (abs_shape, abs_negated) = model.forward(input);

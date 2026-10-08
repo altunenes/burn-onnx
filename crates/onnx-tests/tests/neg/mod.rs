@@ -1,6 +1,6 @@
 // Import the shared macro
 use crate::include_models;
-include_models!(neg);
+include_models!(neg, neg_shape);
 
 #[cfg(test)]
 mod tests {
@@ -24,5 +24,17 @@ mod tests {
             .assert_approx_eq::<f32>(&expected1, Tolerance::default());
 
         assert_eq!(output2, expected2);
+    }
+
+    #[test]
+    fn neg_shape() {
+        let device = Default::default();
+        let model =
+            neg_shape::Model::from_file(concat!(env!("OUT_DIR"), "/model/neg_shape.bpk"), &device);
+
+        let input = Tensor::<3>::ones([2, 3, 4], &device);
+        let output = model.forward(input);
+
+        assert_eq!(output, [-2, -3, -4]);
     }
 }
