@@ -4,6 +4,7 @@ include_models!(
     avg_pool1d,
     avg_pool1d_asymmetric_padding,
     avg_pool1d_ceil_mode,
+    avg_pool1d_ceil_mode_opset10,
     avg_pool2d,
     avg_pool2d_asymmetric_padding,
     avg_pool2d_same_upper_dynamic,
@@ -138,6 +139,25 @@ mod tests {
         output
             .to_data()
             .assert_approx_eq::<f32>(&expected, tolerance);
+    }
+
+    #[test]
+    fn avg_pool1d_ceil_mode_opset10() {
+        // ceil_mode arrived in AveragePool-10, so it must import below opset 19.
+        let device = Default::default();
+        let model: avg_pool1d_ceil_mode_opset10::Model =
+            avg_pool1d_ceil_mode_opset10::Model::from_file(
+                concat!(env!("OUT_DIR"), "/model/avg_pool1d_ceil_mode_opset10.bpk"),
+                &device,
+            );
+
+        let input = Tensor::<3>::from_floats([[[0.0, 1.0, 2.0, 3.0, 4.0, 5.0]]], &device);
+        let output = model.forward(input);
+
+        // Ground truth from onnx.reference.ReferenceEvaluator
+        // (avg_pool1d_ceil_mode_opset10.py).
+        let expected = TensorData::from([[[1.0f32, 3.0, 4.5]]]);
+        output.to_data().assert_eq(&expected, true);
     }
 
     #[test]

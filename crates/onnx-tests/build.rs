@@ -90,6 +90,7 @@ fn add_all_inputs(model_gen: &mut ModelGen) {
         .input("tests/attention/attention_qk_output_3.onnx")
         .input("tests/attention/attention_softcap.onnx")
         .input("tests/avg_pool/avg_pool1d_asymmetric_padding.onnx")
+        .input("tests/avg_pool/avg_pool1d_ceil_mode_opset10.onnx")
         .input("tests/avg_pool/avg_pool2d_asymmetric_padding.onnx")
         .input("tests/avg_pool/avg_pool2d_same_upper_dynamic.onnx")
         .input("tests/avg_pool1d/avg_pool1d.onnx")
