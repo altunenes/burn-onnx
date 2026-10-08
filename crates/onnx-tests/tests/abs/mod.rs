@@ -1,6 +1,6 @@
 // Import the shared macro
 use crate::include_models;
-include_models!(abs);
+include_models!(abs, abs_shape);
 
 #[cfg(test)]
 mod tests {
@@ -20,5 +20,17 @@ mod tests {
         output
             .to_data()
             .assert_approx_eq::<f32>(&expected, Tolerance::default());
+    }
+
+    #[test]
+    fn abs_shape() {
+        let device = Default::default();
+        let model: abs_shape::Model = abs_shape::Model::default();
+
+        let input = Tensor::<3>::ones([2, 3, 4], &device);
+        let (abs_shape, abs_negated) = model.forward(input);
+
+        assert_eq!(abs_shape, [2, 3, 4]);
+        assert_eq!(abs_negated, [2, 3, 4]);
     }
 }
