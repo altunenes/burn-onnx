@@ -5,10 +5,11 @@
 //! **ONNX Spec**: <https://onnx.ai/onnx/operators/onnx__AveragePool.html>
 //!
 //! ## Opset Versions
-//! - **Opset 7**: Initial AveragePool operator
-//! - **Opset 10**: Added dilations attribute support
-//! - **Opset 11**: Updated operator and added count_include_pad attribute
-//! - **Opset 19**: Added ceil_mode attribute
+//! - **Opset 1**: Initial AveragePool operator
+//! - **Opset 7**: Added count_include_pad attribute
+//! - **Opset 10**: Added ceil_mode attribute
+//! - **Opset 11**: Updated operator (same attributes)
+//! - **Opset 19**: Added dilations attribute
 use derive_new::new;
 use onnx_ir_derive::NodeBuilder;
 
@@ -31,9 +32,9 @@ pub struct AvgPool3dConfig {
     pub padding: PaddingConfig3d,
     /// Whether to include padding in the average calculation
     pub count_include_pad: bool,
-    /// Dilation [depth, height, width] (opset 10+)
+    /// Dilation [depth, height, width] (opset 19+)
     pub dilation: [usize; 3],
-    /// Whether to use ceil mode for output size calculation (opset 19+)
+    /// Whether to use ceil mode for output size calculation (opset 10+)
     pub ceil_mode: bool,
     /// Auto padding mode
     pub auto_pad: AutoPad,
@@ -73,18 +74,18 @@ impl NodeProcessor for AvgPool3dProcessor {
                 "kernel_shape" | "strides" | "pads" | "count_include_pad" => {}
                 "ceil_mode" => {
                     let ceil_mode = value.clone().into_i64()?;
-                    if ceil_mode != 0 && opset < 19 {
+                    if ceil_mode != 0 && opset < 10 {
                         return Err(ProcessError::Custom(format!(
-                            "AveragePool: ceil_mode requires opset 19+, got opset {}",
+                            "AveragePool: ceil_mode requires opset 10+, got opset {}",
                             opset
                         )));
                     }
                 }
                 "dilations" => {
                     let dilations = value.clone().into_i64s()?;
-                    if dilations.iter().any(|&d| d != 1) && opset < 10 {
+                    if dilations.iter().any(|&d| d != 1) && opset < 19 {
                         return Err(ProcessError::Custom(format!(
-                            "AveragePool: dilations requires opset 10+, got opset {}",
+                            "AveragePool: dilations requires opset 19+, got opset {}",
                             opset
                         )));
                     }
@@ -275,8 +276,8 @@ mod tests {
         );
         let processor = AvgPool3dProcessor;
         let prefs = OutputPreferences::new();
-        let config = processor.extract_config(&node, 16).unwrap();
-        processor.infer_types(&mut node, 16, &prefs).unwrap();
+        let config = processor.extract_config(&node, 19).unwrap();
+        processor.infer_types(&mut node, 19, &prefs).unwrap();
 
         assert_eq!(config.dilation, [2, 2, 2]);
     }
@@ -293,7 +294,7 @@ mod tests {
         );
         let processor = AvgPool3dProcessor;
         let prefs = OutputPreferences::new();
-        let result = processor.infer_types(&mut node, 9, &prefs);
+        let result = processor.infer_types(&mut node, 18, &prefs);
         assert!(matches!(result, Err(ProcessError::Custom(_))));
     }
 
@@ -309,7 +310,7 @@ mod tests {
         );
         let processor = AvgPool3dProcessor;
         let prefs = OutputPreferences::new();
-        let result = processor.infer_types(&mut node, 18, &prefs);
+        let result = processor.infer_types(&mut node, 9, &prefs);
         assert!(matches!(result, Err(ProcessError::Custom(_))));
     }
 

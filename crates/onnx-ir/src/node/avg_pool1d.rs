@@ -5,10 +5,11 @@
 //! **ONNX Spec**: <https://onnx.ai/onnx/operators/onnx__AveragePool.html>
 //!
 //! ## Opset Versions
-//! - **Opset 7**: Initial AveragePool operator
-//! - **Opset 10**: Added dilations attribute support
-//! - **Opset 11**: Updated operator and added count_include_pad attribute
-//! - **Opset 19**: Added ceil_mode attribute
+//! - **Opset 1**: Initial AveragePool operator
+//! - **Opset 7**: Added count_include_pad attribute
+//! - **Opset 10**: Added ceil_mode attribute
+//! - **Opset 11**: Updated operator (same attributes)
+//! - **Opset 19**: Added dilations attribute
 use derive_new::new;
 use onnx_ir_derive::NodeBuilder;
 
@@ -33,9 +34,9 @@ pub struct AvgPool1dConfig {
     pub padding: PaddingConfig1d,
     /// Whether to include padding in the average calculation
     pub count_include_pad: bool,
-    /// Dilation (opset 10+)
+    /// Dilation (opset 19+)
     pub dilation: usize,
-    /// Whether to use ceil mode for output size calculation (opset 19+)
+    /// Whether to use ceil mode for output size calculation (opset 10+)
     pub ceil_mode: bool,
     /// Auto padding mode
     pub auto_pad: AutoPad,
@@ -81,21 +82,21 @@ impl NodeProcessor for AvgPool1dProcessor {
             match key.as_str() {
                 "kernel_shape" | "strides" | "pads" | "count_include_pad" => {}
                 "ceil_mode" => {
-                    // ceil_mode support requires opset 19+
+                    // ceil_mode support requires opset 10+
                     let ceil_mode = value.clone().into_i64()?;
-                    if ceil_mode != 0 && opset < 19 {
+                    if ceil_mode != 0 && opset < 10 {
                         return Err(ProcessError::Custom(format!(
-                            "AveragePool: ceil_mode requires opset 19+, got opset {}",
+                            "AveragePool: ceil_mode requires opset 10+, got opset {}",
                             opset
                         )));
                     }
                 }
                 "dilations" => {
-                    // Dilations support requires opset 10+
+                    // Dilations support requires opset 19+
                     let dilations = value.clone().into_i64s()?;
-                    if dilations.iter().any(|&d| d != 1) && opset < 10 {
+                    if dilations.iter().any(|&d| d != 1) && opset < 19 {
                         return Err(ProcessError::Custom(format!(
-                            "AveragePool: dilations requires opset 10+, got opset {}",
+                            "AveragePool: dilations requires opset 19+, got opset {}",
                             opset
                         )));
                     }
@@ -268,8 +269,8 @@ mod tests {
         let mut node = node;
         let processor = AvgPool1dProcessor;
         let prefs = OutputPreferences::new();
-        let config = processor.extract_config(&node, 16).unwrap();
-        processor.infer_types(&mut node, 16, &prefs).unwrap();
+        let config = processor.extract_config(&node, 19).unwrap();
+        processor.infer_types(&mut node, 19, &prefs).unwrap();
 
         assert_eq!(config.kernel_size, 4);
         assert_eq!(config.stride, 1);
@@ -284,9 +285,9 @@ mod tests {
         let mut node = node;
         let processor = AvgPool1dProcessor;
         let prefs = OutputPreferences::new();
-        // ceil_mode requires opset 19+
-        let config = processor.extract_config(&node, 19).unwrap();
-        processor.infer_types(&mut node, 19, &prefs).unwrap();
+        // ceil_mode requires opset 10+
+        let config = processor.extract_config(&node, 10).unwrap();
+        processor.infer_types(&mut node, 10, &prefs).unwrap();
 
         assert_eq!(config.kernel_size, 4);
         assert_eq!(config.stride, 1);
@@ -298,25 +299,25 @@ mod tests {
 
     #[test]
     fn test_avg_pool1d_dilation_opset_validation() {
-        // Test that non-default dilations at opset < 10 are rejected in infer_types
+        // Test that non-default dilations at opset < 19 are rejected in infer_types
         let mut node = create_test_node(vec![4], vec![1], vec![0, 0], 0, 0, Some(vec![2]));
         let processor = AvgPool1dProcessor;
         let prefs = OutputPreferences::new();
-        let result = processor.infer_types(&mut node, 9, &prefs);
+        let result = processor.infer_types(&mut node, 18, &prefs);
         assert!(matches!(result, Err(ProcessError::Custom(_))));
     }
 
     #[test]
     fn test_avg_pool1d_ceil_mode_opset_validation() {
-        // Test that ceil_mode=1 with opset < 19 is rejected
+        // Test that ceil_mode=1 with opset < 10 is rejected
         let node = create_test_node(vec![4], vec![1], vec![0, 0], 0, 1, None);
         let mut node = node;
         let processor = AvgPool1dProcessor;
         let prefs = OutputPreferences::new();
-        let result = processor.infer_types(&mut node, 18, &prefs);
+        let result = processor.infer_types(&mut node, 9, &prefs);
         assert!(matches!(result, Err(ProcessError::Custom(_))));
         if let Err(ProcessError::Custom(msg)) = result {
-            assert!(msg.contains("ceil_mode requires opset 19+"));
+            assert!(msg.contains("ceil_mode requires opset 10+"));
         }
     }
 
