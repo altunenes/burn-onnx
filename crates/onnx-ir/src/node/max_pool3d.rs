@@ -7,8 +7,8 @@
 //! ## Opset Versions
 //! - **Opset 1**: Initial MaxPool operator
 //! - **Opset 8**: Added storage_order attribute
-//! - **Opset 10**: Added ceil_mode attribute
-//! - **Opset 11**: Added dilations attribute support
+//! - **Opset 10**: Added ceil_mode and dilations attributes
+//! - **Opset 11**: Updated padding semantics
 //! - **Opset 12**: Added int8/uint8 dtype support
 use derive_new::new;
 use onnx_ir_derive::NodeBuilder;
@@ -73,9 +73,9 @@ impl NodeProcessor for MaxPool3dProcessor {
                 "storage_order" => {}
                 "dilations" => {
                     let dilations = value.clone().into_i64s()?;
-                    if dilations.iter().any(|&d| d != 1) && opset < 11 {
+                    if dilations.iter().any(|&d| d != 1) && opset < 10 {
                         return Err(ProcessError::Custom(format!(
-                            "MaxPool: dilation requires opset 11+, got opset {}",
+                            "MaxPool: dilation requires opset 10+, got opset {}",
                             opset
                         )));
                     }
@@ -254,6 +254,7 @@ mod tests {
 
     #[test]
     fn test_max_pool3d_dilation_opset_validation() {
+        // Test that non-default dilations at opset < 10 are rejected
         let mut node = create_test_node(
             vec![3, 3, 3],
             vec![1, 1, 1],
@@ -264,7 +265,7 @@ mod tests {
         );
         let processor = MaxPool3dProcessor;
         let prefs = OutputPreferences::new();
-        let result = processor.infer_types(&mut node, 10, &prefs);
+        let result = processor.infer_types(&mut node, 9, &prefs);
         assert!(matches!(result, Err(ProcessError::Custom(_))));
     }
 

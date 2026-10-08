@@ -7,15 +7,14 @@
 //! ## Opset Versions
 //! - **Opset 1**: Initial version with basic max pooling operation.
 //! - **Opset 8**: Added optional Indices output and the `storage_order` attribute.
-//! - **Opset 10**: Added `ceil_mode` attribute to use ceiling instead of floor for output shape calculation.
-//! - **Opset 11**: Added support for dilation; updated padding semantics.
+//! - **Opset 10**: Added `ceil_mode` attribute to use ceiling instead of floor for output shape calculation, and the `dilations` attribute.
+//! - **Opset 11**: Updated padding semantics.
 //! - **Opset 12**: Added support for int8, uint8 data types; clarified behavior with negative padding.
 //!
 //! **Implementation Note**: Accepts 1-2 outputs (Y required, optional Indices output).
 //! Indices are typed as int64 with the input's rank.
 //!
 //! ## Missing Test Coverage
-//! - TODO: No test for dilation > 1 with opset < 11 - Should reject dilation in older opsets
 //! - TODO: No test for int8/uint8 dtypes - Opset 12+ supports integer types
 //! - TODO: No test for kernel_shape validation - Missing kernel_shape attribute should be rejected
 //! - TODO: No test for negative padding values - Opset 12+ allows negative padding
@@ -111,11 +110,11 @@ impl NodeProcessor for MaxPool2dProcessor {
                 "kernel_shape" | "strides" | "pads" => {}
                 "storage_order" => {}
                 "dilations" => {
-                    // Dilation support requires opset 11+
+                    // Dilation support requires opset 10+
                     let dilations = value.clone().into_i64s()?;
-                    if dilations.iter().any(|&d| d != 1) && opset < 11 {
+                    if dilations.iter().any(|&d| d != 1) && opset < 10 {
                         return Err(ProcessError::Custom(format!(
-                            "MaxPool: dilation requires opset 11+, got opset {}",
+                            "MaxPool: dilation requires opset 10+, got opset {}",
                             opset
                         )));
                     }
@@ -303,8 +302,9 @@ mod tests {
         let mut node = node;
         let processor = MaxPool2dProcessor;
         let prefs = OutputPreferences::new();
-        let config = processor.extract_config(&node, 16).unwrap();
-        processor.infer_types(&mut node, 16, &prefs).unwrap();
+        // dilations requires opset 10+
+        let config = processor.extract_config(&node, 10).unwrap();
+        processor.infer_types(&mut node, 10, &prefs).unwrap();
 
         assert_eq!(config.kernel_size, [3, 3]);
         assert_eq!(config.strides, [1, 1]);
@@ -373,6 +373,26 @@ mod tests {
         assert_eq!(config.dilation, [1, 1]);
         assert!(config.ceil_mode);
         assert!(matches!(config.padding, PaddingConfig2d::Valid));
+    }
+
+    #[test]
+    fn test_max_pool2d_dilation_opset_validation() {
+        // Test that non-default dilations at opset < 10 are rejected
+        let mut node = create_test_node(
+            vec![3, 3],
+            vec![1, 1],
+            vec![0, 0, 0, 0],
+            vec![2, 2],
+            0,
+            None,
+        );
+        let processor = MaxPool2dProcessor;
+        let prefs = OutputPreferences::new();
+        let result = processor.infer_types(&mut node, 9, &prefs);
+        assert!(matches!(result, Err(ProcessError::Custom(_))));
+        if let Err(ProcessError::Custom(msg)) = result {
+            assert!(msg.contains("dilation requires opset 10+"));
+        }
     }
 
     #[test]

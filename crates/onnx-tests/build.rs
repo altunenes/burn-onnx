@@ -404,6 +404,7 @@ fn add_all_inputs(model_gen: &mut ModelGen) {
         .input("tests/max/max_shape_broadcast.onnx")
         .input("tests/max/max_shape_tensor.onnx")
         .input("tests/maxpool/maxpool1d_asymmetric_padding.onnx")
+        .input("tests/maxpool/maxpool1d_dilation_opset10.onnx")
         .input("tests/maxpool/maxpool1d_indices.onnx")
         .input("tests/maxpool/maxpool2d_asymmetric_padding.onnx")
         .input("tests/maxpool/maxpool2d_indices.onnx")

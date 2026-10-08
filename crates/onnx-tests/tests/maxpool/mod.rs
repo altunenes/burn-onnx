@@ -3,6 +3,7 @@ use crate::include_models;
 include_models!(
     maxpool1d,
     maxpool1d_asymmetric_padding,
+    maxpool1d_dilation_opset10,
     maxpool1d_indices,
     maxpool2d_indices,
     maxpool2d_indices_same,
@@ -87,6 +88,24 @@ mod tests {
         // Window 1: max(3,4,5) = 5
         // Window 2: max(5,6) = 6 (partial window at edge)
         let expected = TensorData::from([[[3.0f32, 5.0, 6.0]]]);
+        output.to_data().assert_eq(&expected, true);
+    }
+
+    #[test]
+    fn maxpool1d_dilation_opset10() {
+        // dilations arrived in MaxPool-10, so it must import below opset 11.
+        let device = Default::default();
+        let model: maxpool1d_dilation_opset10::Model = maxpool1d_dilation_opset10::Model::from_file(
+            concat!(env!("OUT_DIR"), "/model/maxpool1d_dilation_opset10.bpk"),
+            &device,
+        );
+
+        let input = Tensor::<3>::from_floats([[[3.0, 1.0, 4.0, 1.0, 5.0, 9.0]]], &device);
+        let output = model.forward(input);
+
+        // Ground truth from onnx.reference.ReferenceEvaluator
+        // (maxpool1d_dilation_opset10.py).
+        let expected = TensorData::from([[[4.0f32, 1.0, 5.0, 9.0]]]);
         output.to_data().assert_eq(&expected, true);
     }
 
