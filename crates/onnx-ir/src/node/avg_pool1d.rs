@@ -10,6 +10,7 @@
 //! - **Opset 10**: Added ceil_mode attribute
 //! - **Opset 11**: Updated operator (same attributes)
 //! - **Opset 19**: Added dilations attribute
+//! - **Opset 22**: Added bfloat16 type support
 use derive_new::new;
 use onnx_ir_derive::NodeBuilder;
 
